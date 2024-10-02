@@ -121,23 +121,23 @@ st.markdown("""
     .stButton>button:hover {
         background-color: #45a049;
     }
-    .scrollable-container {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 20px;
-        background-color: #f9f9f9;
-        height: 0px;  /* Fixed height */
-        overflow-y: auto;
-        margin-left: 20px;
-    }
-     .scrollable-container1 {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 20px;
-        background-color: #f9f9f9;
-        overflow-y: auto;
-        margin-right: 50px;
-    }
+    # .scrollable-container {
+    #     border: 1px solid #e0e0e0;
+    #     border-radius: 8px;
+    #     padding: 20px;
+    #     background-color: #f9f9f9;
+    #     height: 0px;  /* Fixed height */
+    #     overflow-y: auto;
+    #     margin-left: 20px;
+    # }
+    #  .scrollable-container1 {
+    #     border: 1px solid #e0e0e0;
+    #     border-radius: 8px;
+    #     padding: 20px;
+    #     background-color: #f9f9f9;
+    #     overflow-y: auto;
+    #     margin-right: 50px;
+    # }
     .comment {
         background-color: #ffffff;
         border-left: 4px solid #3498db;
