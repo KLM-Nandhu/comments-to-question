@@ -3,6 +3,7 @@ from googleapiclient.discovery import build
 from datetime import datetime
 import os
 import openai
+import json
 
 # Get API keys from environment variables
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
@@ -83,6 +84,67 @@ If there are no questions in a category, write 'None found.' under that category
 
     return response.choices[0].message.content
 
+def get_video_info(video_id):
+    try:
+        response = youtube.videos().list(
+            part='snippet,statistics',
+            id=video_id
+        ).execute()
+
+        if 'items' in response:
+            video = response['items'][0]
+            return {
+                'title': video['snippet']['title'],
+                'views': video['statistics']['viewCount'],
+                'likes': video['statistics']['likeCount'],
+                'comments': video['statistics']['commentCount'],
+                'published_at': video['snippet']['publishedAt']
+            }
+        else:
+            return None
+    except Exception as e:
+        st.error(f"An error occurred while fetching video info: {str(e)}")
+        return None
+
+def analyze_sentiment(comments):
+    positive_words = set(['good', 'great', 'awesome', 'excellent', 'amazing', 'love', 'like', 'best'])
+    negative_words = set(['bad', 'terrible', 'awful', 'worst', 'hate', 'dislike', 'poor'])
+    
+    positive_count = 0
+    negative_count = 0
+    neutral_count = 0
+    
+    for comment in comments:
+        text = comment['text'].lower()
+        if any(word in text for word in positive_words):
+            positive_count += 1
+        elif any(word in text for word in negative_words):
+            negative_count += 1
+        else:
+            neutral_count += 1
+    
+    total = positive_count + negative_count + neutral_count
+    return {
+        'positive': positive_count / total if total > 0 else 0,
+        'negative': negative_count / total if total > 0 else 0,
+        'neutral': neutral_count / total if total > 0 else 0
+    }
+
+def analyze_comments(video_id):
+    if video_id:
+        with st.spinner("📊 Fetching and analyzing comments..."):
+            comments = get_all_comments(video_id)
+            if isinstance(comments, list):
+                st.session_state.comments = comments
+                st.session_state.comments.sort(key=lambda x: x['published_at'], reverse=True)
+                st.session_state.questions = extract_questions(comments)
+                st.session_state.video_info = get_video_info(video_id)
+                st.session_state.sentiment = analyze_sentiment(comments)
+            else:
+                st.error(comments)
+    else:
+        st.error("⚠️ Please enter a YouTube Video ID.")
+
 st.set_page_config(layout="wide", page_title="YouTube Comment Analyzer 🎥💬")
 
 st.markdown("""
@@ -143,15 +205,6 @@ st.markdown("""
         padding: 5px 10px;
         font-size: 14px;
     }
-    # .scrollable-container {
-    #     border: 1px solid #e0e0e0;
-    #     border-radius: 8px;
-    #     padding: 20px;
-    #     background-color: #ffffff;
-    #     height: 500px;
-    #     overflow-y: auto;
-    #     margin-bottom: 20px;
-    # }
     .comment {
         background-color: #f9f9f9;
         border-left: 4px solid #3498db;
@@ -199,16 +252,14 @@ if 'show_comments' not in st.session_state:
     st.session_state.show_comments = 10
 if 'questions' not in st.session_state:
     st.session_state.questions = None
-
-def sort_comments():
-    if st.session_state.sort_order == 'newest':
-        st.session_state.comments.sort(key=lambda x: x['published_at'], reverse=True)
-    else:
-        st.session_state.comments.sort(key=lambda x: x['published_at'])
+if 'video_info' not in st.session_state:
+    st.session_state.video_info = None
+if 'sentiment' not in st.session_state:
+    st.session_state.sentiment = None
 
 def toggle_sort_order():
     st.session_state.sort_order = 'oldest' if st.session_state.sort_order == 'newest' else 'newest'
-    sort_comments()
+    st.session_state.comments.sort(key=lambda x: x['published_at'], reverse=(st.session_state.sort_order == 'newest'))
 
 def show_more_comments():
     st.session_state.show_comments = min(st.session_state.show_comments + 10, len(st.session_state.comments))
@@ -216,18 +267,8 @@ def show_more_comments():
 def show_less_comments():
     st.session_state.show_comments = max(st.session_state.show_comments - 10, 10)
 
-if st.button("🚀 Analyze Comments"):
-    if video_id:
-        with st.spinner("📊 Fetching and analyzing comments..."):
-            comments = get_all_comments(video_id)
-            if isinstance(comments, list):
-                st.session_state.comments = comments
-                sort_comments()
-                st.session_state.questions = extract_questions(comments)
-            else:
-                st.error(comments)
-    else:
-        st.error("⚠️ Please enter a YouTube Video ID.")
+if st.button("🚀 Analyze Comments", key="analyze_button"):
+    analyze_comments(video_id)
 
 if st.session_state.comments:
     col1, col2 = st.columns(2)
@@ -238,7 +279,6 @@ if st.session_state.comments:
                     key="sort_button", help="Toggle between newest and oldest comments"):
             toggle_sort_order()
         
-        st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
         for i, comment in enumerate(st.session_state.comments[:st.session_state.show_comments]):
             st.markdown(f"""
             <div class="comment">
@@ -248,7 +288,6 @@ if st.session_state.comments:
                 <div class="comment-likes">❤️ {comment['likes']}</div>
             </div>
             """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
         
         col1_1, col1_2, col1_3 = st.columns([1,1,2])
         with col1_1:
@@ -265,103 +304,28 @@ if st.session_state.comments:
     with col2:
         st.markdown("<h2>❓ Extracted Questions</h2>", unsafe_allow_html=True)
         if st.session_state.questions:
-            st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
             st.markdown(st.session_state.questions, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("🤔 No questions extracted yet. Try analyzing a video with more comments or discussions.")
 
-# Add a section for video information
-if 'video_info' not in st.session_state:
-    st.session_state.video_info = None
+    # Display video information if available
+    if st.session_state.video_info:
+        st.markdown("## 📺 Video Information")
+        st.markdown(f"**Title:** {st.session_state.video_info['title']}")
+        st.markdown(f"**Views:** {st.session_state.video_info['views']}")
+        st.markdown(f"**Likes:** {st.session_state.video_info['likes']}")
+        st.markdown(f"**Comments:** {st.session_state.video_info['comments']}")
+        st.markdown(f"**Published:** {st.session_state.video_info['published_at']}")
 
-def get_video_info(video_id):
-    try:
-        response = youtube.videos().list(
-            part='snippet,statistics',
-            id=video_id
-        ).execute()
+    # Display sentiment analysis if available
+    if st.session_state.sentiment:
+        st.markdown("## 💭 Sentiment Analysis")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Positive", f"{st.session_state.sentiment['positive']:.2%}")
+        col2.metric("Neutral", f"{st.session_state.sentiment['neutral']:.2%}")
+        col3.metric("Negative", f"{st.session_state.sentiment['negative']:.2%}")
 
-        if 'items' in response:
-            video = response['items'][0]
-            return {
-                'title': video['snippet']['title'],
-                'views': video['statistics']['viewCount'],
-                'likes': video['statistics']['likeCount'],
-                'comments': video['statistics']['commentCount'],
-                'published_at': video['snippet']['publishedAt']
-            }
-        else:
-            return None
-    except Exception as e:
-        st.error(f"An error occurred while fetching video info: {str(e)}")
-        return None
-
-# Display video information if available
-if st.session_state.video_info:
-    st.markdown("## 📺 Video Information")
-    st.markdown(f"**Title:** {st.session_state.video_info['title']}")
-    st.markdown(f"**Views:** {st.session_state.video_info['views']}")
-    st.markdown(f"**Likes:** {st.session_state.video_info['likes']}")
-    st.markdown(f"**Comments:** {st.session_state.video_info['comments']}")
-    st.markdown(f"**Published:** {st.session_state.video_info['published_at']}")
-
-# Add a section for sentiment analysis
-if 'sentiment' not in st.session_state:
-    st.session_state.sentiment = None
-
-def analyze_sentiment(comments):
-    # This is a simple sentiment analysis. For a more accurate analysis,
-    # you might want to use a dedicated NLP library or API.
-    positive_words = set(['good', 'great', 'awesome', 'excellent', 'amazing', 'love', 'like', 'best'])
-    negative_words = set(['bad', 'terrible', 'awful', 'worst', 'hate', 'dislike', 'poor'])
-    
-    positive_count = 0
-    negative_count = 0
-    neutral_count = 0
-    
-    for comment in comments:
-        text = comment['text'].lower()
-        if any(word in text for word in positive_words):
-            positive_count += 1
-        elif any(word in text for word in negative_words):
-            negative_count += 1
-        else:
-            neutral_count += 1
-    
-    total = positive_count + negative_count + neutral_count
-    return {
-        'positive': positive_count / total if total > 0 else 0,
-        'negative': negative_count / total if total > 0 else 0,
-        'neutral': neutral_count / total if total > 0 else 0
-    }
-
-# Update the "Analyze Comments" button to include video info and sentiment analysis
-if st.button("🚀 Analyze Comments"):
-    if video_id:
-        with st.spinner("📊 Fetching and analyzing comments..."):
-            comments = get_all_comments(video_id)
-            if isinstance(comments, list):
-                st.session_state.comments = comments
-                sort_comments()
-                st.session_state.questions = extract_questions(comments)
-                st.session_state.video_info = get_video_info(video_id)
-                st.session_state.sentiment = analyze_sentiment(comments)
-            else:
-                st.error(comments)
-    else:
-        st.error("⚠️ Please enter a YouTube Video ID.")
-
-# Display sentiment analysis if available
-if st.session_state.sentiment:
-    st.markdown("## 💭 Sentiment Analysis")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Positive", f"{st.session_state.sentiment['positive']:.2%}")
-    col2.metric("Neutral", f"{st.session_state.sentiment['neutral']:.2%}")
-    col3.metric("Negative", f"{st.session_state.sentiment['negative']:.2%}")
-
-# Add an export feature
-if st.session_state.comments:
+    # Add an export feature
     st.markdown("## 📤 Export Data")
     export_format = st.selectbox("Choose export format:", ["CSV", "JSON"])
     
@@ -377,7 +341,6 @@ if st.session_state.comments:
                 mime="text/csv"
             )
         else:
-            import json
             json_str = json.dumps(st.session_state.comments, default=str)
             st.download_button(
                 label="Download JSON",
