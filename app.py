@@ -128,7 +128,16 @@ st.markdown("""
         background-color: #f9f9f9;
         height: 0px;  /* Fixed height */
         overflow-y: auto;
-        margin-right: 20px;
+        margin-left: 20px;
+    }
+     .scrollable-container1 {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        background-color: #f9f9f9;
+        height: 0px;  /* Fixed height */
+        overflow-y: auto;
+        margin-right: 30px;
     }
     .comment {
         background-color: #ffffff;
@@ -187,7 +196,7 @@ if st.button("Analyze Comments"):
                 
                 with col2:
                     st.markdown("<h2>Extracted Questions</h2>", unsafe_allow_html=True)
-                    st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
+                    st.markdown("<div class='scrollable-container1'>", unsafe_allow_html=True)
                     st.markdown(questions, unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
             else:
