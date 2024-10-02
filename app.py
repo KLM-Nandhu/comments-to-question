@@ -135,9 +135,8 @@ st.markdown("""
         border-radius: 8px;
         padding: 20px;
         background-color: #f9f9f9;
-        height: 0px;  /* Fixed height */
         overflow-y: auto;
-        margin-right: 100px;
+        margin-right: 50px;
     }
     .comment {
         background-color: #ffffff;
@@ -146,7 +145,7 @@ st.markdown("""
         margin-bottom: 15px;
         border-radius: 4px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        margin-right: 100px;
+        margin-right: 50px;
     }
     .comment-author {
         font-weight: bold;
