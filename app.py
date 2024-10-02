@@ -50,22 +50,23 @@ def get_all_comments(video_id: str):
         return f"An error occurred while fetching comments: {str(e)}"
 
 def extract_questions(comments):
-    all_comments_text = " ".join([comment['text'] for comment in comments])
+    comments_with_authors = [f"{comment['author']}: {comment['text']}" for comment in comments]
+    all_comments_text = "\n".join(comments_with_authors)
     
-    prompt = f"""Analyze the following YouTube comments and extract all direct and indirect questions about the video. Categorize them as either 'Direct' or 'Indirect'.
+    prompt = f"""Analyze the following YouTube comments and extract all direct and indirect questions about the video. Categorize them as either 'Direct' or 'Indirect'. Include the author of each question in parentheses.
 
 Comments:
 {all_comments_text}
 
 Format your response as follows:
 Direct Questions:
-1. [Question 1]
-2. [Question 2]
+1. [Question 1] (Author1)
+2. [Question 2] (Author2)
 ...
 
 Indirect Questions:
-1. [Question 1]
-2. [Question 2]
+1. [Question 1] (Author1)
+2. [Question 2] (Author2)
 ...
 
 If there are no questions in a category, write 'None found.' under that category.
