@@ -183,7 +183,7 @@ def analyze_comments(video_id):
     else:
         st.error("⚠️ Please enter a YouTube Video ID.")
 
-st.set_page_config(layout="wide", page_title="YouTube Comment Analyzer 🎥💬")
+st.set_page_config(layout="wide", page_title="Bent's Comment Analyzer 🎥💬")
 
 st.markdown("""
 <style>
@@ -278,7 +278,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🎥 YouTube Comment Analyzer 💬")
+st.title("🎥 Bent's Comment Analyzer 💬")
 
 video_id = st.text_input("🔍 Enter YouTube Video ID")
 
