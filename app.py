@@ -128,6 +128,7 @@ st.markdown("""
         background-color: #f9f9f9;
         height: 0px;  /* Fixed height */
         overflow-y: auto;
+        margin-right: 20px;
     }
     .comment {
         background-color: #ffffff;
