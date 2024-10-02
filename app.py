@@ -121,14 +121,12 @@ st.markdown("""
     .stButton>button:hover {
         background-color: #45a049;
     }
-    .comments-container, .questions-container {
-        max-width: 800px;
-        margin: 2rem auto;
+    .scrollable-container {
         border: 1px solid #e0e0e0;
         border-radius: 8px;
         padding: 20px;
         background-color: #f9f9f9;
-        max-height: 500px;
+        height: 600px;
         overflow-y: auto;
     }
     .comment {
@@ -167,10 +165,16 @@ if st.button("Analyze Comments"):
         with st.spinner("Fetching and analyzing comments..."):
             comments = get_all_comments(video_id)
             if isinstance(comments, list):
-                st.markdown("<div class='comments-container'>", unsafe_allow_html=True)
-                st.markdown("<h2>Comments</h2>", unsafe_allow_html=True)
-                for comment in comments:
-                    st.markdown(f"""
+                questions = extract_questions(comments)
+                
+                # Create two columns for split screen
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("<h2>Comments</h2>", unsafe_allow_html=True)
+                    st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
+                    for comment in comments:
+                        st.markdown(f"""
 <div class="comment">
     <div class="comment-author">{comment['author']}</div>
     <div class="comment-date">{comment['published_at']}</div>
@@ -178,13 +182,13 @@ if st.button("Analyze Comments"):
     <div class="comment-likes">👍 {comment['likes']}</div>
 </div>
 """, unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-                questions = extract_questions(comments)
-                st.markdown("<div class='questions-container'>", unsafe_allow_html=True)
-                st.markdown("<h2>Extracted Questions</h2>", unsafe_allow_html=True)
-                st.markdown(questions)
-                st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("<h2>Extracted Questions</h2>", unsafe_allow_html=True)
+                    st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
+                    st.markdown(questions, unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
             else:
                 st.error(comments)
     else:
