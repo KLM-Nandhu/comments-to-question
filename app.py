@@ -145,7 +145,7 @@ st.markdown("""
         margin-bottom: 15px;
         border-radius: 4px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        margin: 50px;
+        margin: 0px 0px 50px 0px;
     }
     .comment-author {
         font-weight: bold;
