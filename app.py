@@ -4,6 +4,11 @@ from datetime import datetime
 import os
 import openai
 import json
+from docx import Document
+from io import BytesIO
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Get API keys from environment variables
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
@@ -129,6 +134,39 @@ def analyze_sentiment(comments):
         'negative': negative_count / total if total > 0 else 0,
         'neutral': neutral_count / total if total > 0 else 0
     }
+
+def create_docx_report(video_info, comments, questions, sentiment):
+    doc = Document()
+    doc.add_heading('YouTube Video Analysis Report', 0)
+
+    # Video Information
+    doc.add_heading('Video Information', level=1)
+    doc.add_paragraph(f"Title: {video_info['title']}")
+    doc.add_paragraph(f"Views: {video_info['views']}")
+    doc.add_paragraph(f"Likes: {video_info['likes']}")
+    doc.add_paragraph(f"Comments: {video_info['comments']}")
+    doc.add_paragraph(f"Published: {video_info['published_at']}")
+
+    # Sentiment Analysis
+    doc.add_heading('Sentiment Analysis', level=1)
+    doc.add_paragraph(f"Positive: {sentiment['positive']:.2%}")
+    doc.add_paragraph(f"Neutral: {sentiment['neutral']:.2%}")
+    doc.add_paragraph(f"Negative: {sentiment['negative']:.2%}")
+
+    # Extracted Questions
+    doc.add_heading('Extracted Questions', level=1)
+    doc.add_paragraph(questions)
+
+    # Comments
+    doc.add_heading('Comments', level=1)
+    for comment in comments:
+        doc.add_paragraph(f"Author: {comment['author']}")
+        doc.add_paragraph(f"Text: {comment['text']}")
+        doc.add_paragraph(f"Likes: {comment['likes']}")
+        doc.add_paragraph(f"Published at: {comment['published_at']}")
+        doc.add_paragraph("---")
+
+    return doc
 
 def analyze_comments(video_id):
     if video_id:
@@ -270,6 +308,68 @@ def show_less_comments():
 if st.button("🚀 Analyze Comments", key="analyze_button"):
     analyze_comments(video_id)
 
+# Display video information, sentiment analysis, and export data at the top
+if st.session_state.video_info:
+    st.markdown("## 📺 Video Information")
+    st.markdown(f"**Title:** {st.session_state.video_info['title']}")
+    st.markdown(f"**Views:** {st.session_state.video_info['views']}")
+    st.markdown(f"**Likes:** {st.session_state.video_info['likes']}")
+    st.markdown(f"**Comments:** {st.session_state.video_info['comments']}")
+    st.markdown(f"**Published:** {st.session_state.video_info['published_at']}")
+
+if st.session_state.sentiment:
+    st.markdown("## 💭 Sentiment Analysis")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Positive", f"{st.session_state.sentiment['positive']:.2%}")
+    col2.metric("Neutral", f"{st.session_state.sentiment['neutral']:.2%}")
+    col3.metric("Negative", f"{st.session_state.sentiment['negative']:.2%}")
+
+if st.session_state.comments:
+    st.markdown("## 📤 Export Data")
+    export_format = st.selectbox("Choose export format:", ["CSV", "JSON", "DOCX"])
+    
+    if st.button("Export Data"):
+        if export_format == "CSV":
+            csv = "Author,Text,Likes,Published At\n"
+            for comment in st.session_state.comments:
+                csv += f"{comment['author']},{comment['text']},{comment['likes']},{comment['published_at']}\n"
+            st.download_button(
+                label="Download CSV",
+                data=csv,
+                file_name="youtube_analysis.csv",
+                mime="text/csv"
+            )
+        elif export_format == "JSON":
+            data = {
+                "video_info": st.session_state.video_info,
+                "sentiment": st.session_state.sentiment,
+                "questions": st.session_state.questions,
+                "comments": st.session_state.comments
+            }
+            json_str = json.dumps(data, default=str)
+            st.download_button(
+                label="Download JSON",
+                data=json_str,
+                file_name="youtube_analysis.json",
+                mime="application/json"
+            )
+        else:  # DOCX
+            doc = create_docx_report(
+                st.session_state.video_info,
+                st.session_state.comments,
+                st.session_state.questions,
+                st.session_state.sentiment
+            )
+            bio = BytesIO()
+            doc.save(bio)
+            st.download_button(
+                label="Download DOCX",
+                data=bio.getvalue(),
+                file_name="youtube_analysis.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+
+# Display comments and extracted questions
 if st.session_state.comments:
     col1, col2 = st.columns(2)
     
@@ -307,47 +407,6 @@ if st.session_state.comments:
             st.markdown(st.session_state.questions, unsafe_allow_html=True)
         else:
             st.info("🤔 No questions extracted yet. Try analyzing a video with more comments or discussions.")
-
-    # Display video information if available
-    if st.session_state.video_info:
-        st.markdown("## 📺 Video Information")
-        st.markdown(f"**Title:** {st.session_state.video_info['title']}")
-        st.markdown(f"**Views:** {st.session_state.video_info['views']}")
-        st.markdown(f"**Likes:** {st.session_state.video_info['likes']}")
-        st.markdown(f"**Comments:** {st.session_state.video_info['comments']}")
-        st.markdown(f"**Published:** {st.session_state.video_info['published_at']}")
-
-    # Display sentiment analysis if available
-    if st.session_state.sentiment:
-        st.markdown("## 💭 Sentiment Analysis")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Positive", f"{st.session_state.sentiment['positive']:.2%}")
-        col2.metric("Neutral", f"{st.session_state.sentiment['neutral']:.2%}")
-        col3.metric("Negative", f"{st.session_state.sentiment['negative']:.2%}")
-
-    # Add an export feature
-    st.markdown("## 📤 Export Data")
-    export_format = st.selectbox("Choose export format:", ["CSV", "JSON"])
-    
-    if st.button("Export Data"):
-        if export_format == "CSV":
-            csv = "Author,Text,Likes,Published At\n"
-            for comment in st.session_state.comments:
-                csv += f"{comment['author']},{comment['text']},{comment['likes']},{comment['published_at']}\n"
-            st.download_button(
-                label="Download CSV",
-                data=csv,
-                file_name="youtube_comments.csv",
-                mime="text/csv"
-            )
-        else:
-            json_str = json.dumps(st.session_state.comments, default=str)
-            st.download_button(
-                label="Download JSON",
-                data=json_str,
-                file_name="youtube_comments.json",
-                mime="application/json"
-            )
 
 st.markdown("---")
 st.markdown("Developed with ❤️ using Streamlit")
