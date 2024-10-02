@@ -38,7 +38,7 @@ def get_all_comments(video_id: str):
                     'author': comment['authorDisplayName'],
                     'text': comment['textDisplay'],
                     'likes': comment['likeCount'],
-                    'published_at': comment['publishedAt']
+                    'published_at': datetime.strptime(comment['publishedAt'], "%Y-%m-%dT%H:%M:%SZ")
                 })
 
             nextPageToken = response.get('nextPageToken')
@@ -126,17 +126,9 @@ st.markdown("""
     #     border-radius: 8px;
     #     padding: 20px;
     #     background-color: #f9f9f9;
-    #     height: 0px;  /* Fixed height */
+    #     height: 600px;
     #     overflow-y: auto;
-    #     margin-left: 20px;
-    # }
-    #  .scrollable-container1 {
-    #     border: 1px solid #e0e0e0;
-    #     border-radius: 8px;
-    #     padding: 20px;
-    #     background-color: #f9f9f9;
-    #     overflow-y: auto;
-    #     margin-right: 50px;
+    #     margin-bottom: 20px;
     # }
     .comment {
         background-color: #ffffff;
@@ -145,7 +137,6 @@ st.markdown("""
         margin-bottom: 15px;
         border-radius: 4px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        margin: 0px 0px 50px 0px;
     }
     .comment-author {
         font-weight: bold;
@@ -163,6 +154,9 @@ st.markdown("""
         color: #3498db;
         margin-top: 5px;
     }
+    .sort-button {
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -170,11 +164,40 @@ st.title("YouTube Comments Analyzer")
 
 video_id = st.text_input("Enter YouTube Video ID")
 
+if 'comments' not in st.session_state:
+    st.session_state.comments = []
+if 'sort_order' not in st.session_state:
+    st.session_state.sort_order = 'newest'
+if 'show_comments' not in st.session_state:
+    st.session_state.show_comments = 10
+
+def sort_comments():
+    if st.session_state.sort_order == 'newest':
+        st.session_state.comments.sort(key=lambda x: x['published_at'], reverse=True)
+    else:
+        st.session_state.comments.sort(key=lambda x: x['published_at'])
+
+def toggle_sort_order():
+    st.session_state.sort_order = 'oldest' if st.session_state.sort_order == 'newest' else 'newest'
+    sort_comments()
+
+def show_more_comments():
+    st.session_state.show_comments += 10
+    if st.session_state.show_comments > len(st.session_state.comments):
+        st.session_state.show_comments = len(st.session_state.comments)
+
+def show_less_comments():
+    st.session_state.show_comments -= 10
+    if st.session_state.show_comments < 10:
+        st.session_state.show_comments = 10
+
 if st.button("Analyze Comments"):
     if video_id:
         with st.spinner("Fetching and analyzing comments..."):
             comments = get_all_comments(video_id)
             if isinstance(comments, list):
+                st.session_state.comments = comments
+                sort_comments()
                 questions = extract_questions(comments)
                 
                 # Create two columns for split screen
@@ -182,21 +205,31 @@ if st.button("Analyze Comments"):
                 
                 with col1:
                     st.markdown("<h2>Comments</h2>", unsafe_allow_html=True)
+                    sort_button = st.button(f"Sort by: {st.session_state.sort_order.capitalize()}", on_click=toggle_sort_order, key="sort_button")
+                    
                     st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
-                    for comment in comments:
+                    for i, comment in enumerate(st.session_state.comments[:st.session_state.show_comments]):
                         st.markdown(f"""
                         <div class="comment">
                             <div class="comment-author">{comment['author']}</div>
-                            <div class="comment-date">{comment['published_at']}</div>
+                            <div class="comment-date">{comment['published_at'].strftime('%Y-%m-%d %H:%M:%S')}</div>
                             <div class="comment-text">{comment['text']}</div>
                             <div class="comment-likes">👍 {comment['likes']}</div>
                         </div>
                         """, unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    col1_1, col1_2 = st.columns(2)
+                    with col1_1:
+                        if st.session_state.show_comments < len(st.session_state.comments):
+                            st.button("Show More", on_click=show_more_comments)
+                    with col1_2:
+                        if st.session_state.show_comments > 10:
+                            st.button("Show Less", on_click=show_less_comments)
                 
                 with col2:
                     st.markdown("<h2>Extracted Questions</h2>", unsafe_allow_html=True)
-                    st.markdown("<div class='scrollable-container1'>", unsafe_allow_html=True)
+                    st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
                     st.markdown(questions, unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
             else:
