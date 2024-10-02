@@ -72,7 +72,7 @@ If there are no questions in a category, write 'None found.' under that category
 """
 
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You are a helpful assistant that analyzes YouTube comments to extract questions."},
             {"role": "user", "content": prompt}
