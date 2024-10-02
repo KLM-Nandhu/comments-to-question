@@ -189,7 +189,7 @@ st.markdown("""
 
 st.title("🎥 YouTube Comment Analyzer 💬")
 
-video_id = st.text_input("🔍 Enter YouTube Video ID", key="video_id_input")
+video_id = st.text_input("🔍 Enter YouTube Video ID")
 
 if 'comments' not in st.session_state:
     st.session_state.comments = []
@@ -199,10 +199,6 @@ if 'show_comments' not in st.session_state:
     st.session_state.show_comments = 10
 if 'questions' not in st.session_state:
     st.session_state.questions = None
-if 'video_info' not in st.session_state:
-    st.session_state.video_info = None
-if 'sentiment' not in st.session_state:
-    st.session_state.sentiment = None
 
 def sort_comments():
     if st.session_state.sort_order == 'newest':
@@ -220,7 +216,7 @@ def show_more_comments():
 def show_less_comments():
     st.session_state.show_comments = max(st.session_state.show_comments - 10, 10)
 
-if st.button("🚀 Analyze Comments", key="analyze_button"):
+if st.button("🚀 Analyze Comments"):
     if video_id:
         with st.spinner("📊 Fetching and analyzing comments..."):
             comments = get_all_comments(video_id)
@@ -228,8 +224,6 @@ if st.button("🚀 Analyze Comments", key="analyze_button"):
                 st.session_state.comments = comments
                 sort_comments()
                 st.session_state.questions = extract_questions(comments)
-                st.session_state.video_info = get_video_info(video_id)
-                st.session_state.sentiment = analyze_sentiment(comments)
             else:
                 st.error(comments)
     else:
@@ -259,11 +253,11 @@ if st.session_state.comments:
         col1_1, col1_2, col1_3 = st.columns([1,1,2])
         with col1_1:
             if st.session_state.show_comments < len(st.session_state.comments):
-                if st.button("📥 Show More", key="show_more_button"):
+                if st.button("📥 Show More", key="show_more"):
                     show_more_comments()
         with col1_2:
             if st.session_state.show_comments > 10:
-                if st.button("📤 Show Less", key="show_less_button"):
+                if st.button("📤 Show Less", key="show_less"):
                     show_less_comments()
         with col1_3:
             st.write(f"Showing {st.session_state.show_comments} of {len(st.session_state.comments)} comments")
@@ -277,6 +271,32 @@ if st.session_state.comments:
         else:
             st.info("🤔 No questions extracted yet. Try analyzing a video with more comments or discussions.")
 
+# Add a section for video information
+if 'video_info' not in st.session_state:
+    st.session_state.video_info = None
+
+def get_video_info(video_id):
+    try:
+        response = youtube.videos().list(
+            part='snippet,statistics',
+            id=video_id
+        ).execute()
+
+        if 'items' in response:
+            video = response['items'][0]
+            return {
+                'title': video['snippet']['title'],
+                'views': video['statistics']['viewCount'],
+                'likes': video['statistics']['likeCount'],
+                'comments': video['statistics']['commentCount'],
+                'published_at': video['snippet']['publishedAt']
+            }
+        else:
+            return None
+    except Exception as e:
+        st.error(f"An error occurred while fetching video info: {str(e)}")
+        return None
+
 # Display video information if available
 if st.session_state.video_info:
     st.markdown("## 📺 Video Information")
@@ -285,6 +305,52 @@ if st.session_state.video_info:
     st.markdown(f"**Likes:** {st.session_state.video_info['likes']}")
     st.markdown(f"**Comments:** {st.session_state.video_info['comments']}")
     st.markdown(f"**Published:** {st.session_state.video_info['published_at']}")
+
+# Add a section for sentiment analysis
+if 'sentiment' not in st.session_state:
+    st.session_state.sentiment = None
+
+def analyze_sentiment(comments):
+    # This is a simple sentiment analysis. For a more accurate analysis,
+    # you might want to use a dedicated NLP library or API.
+    positive_words = set(['good', 'great', 'awesome', 'excellent', 'amazing', 'love', 'like', 'best'])
+    negative_words = set(['bad', 'terrible', 'awful', 'worst', 'hate', 'dislike', 'poor'])
+    
+    positive_count = 0
+    negative_count = 0
+    neutral_count = 0
+    
+    for comment in comments:
+        text = comment['text'].lower()
+        if any(word in text for word in positive_words):
+            positive_count += 1
+        elif any(word in text for word in negative_words):
+            negative_count += 1
+        else:
+            neutral_count += 1
+    
+    total = positive_count + negative_count + neutral_count
+    return {
+        'positive': positive_count / total if total > 0 else 0,
+        'negative': negative_count / total if total > 0 else 0,
+        'neutral': neutral_count / total if total > 0 else 0
+    }
+
+# Update the "Analyze Comments" button to include video info and sentiment analysis
+if st.button("🚀 Analyze Comments"):
+    if video_id:
+        with st.spinner("📊 Fetching and analyzing comments..."):
+            comments = get_all_comments(video_id)
+            if isinstance(comments, list):
+                st.session_state.comments = comments
+                sort_comments()
+                st.session_state.questions = extract_questions(comments)
+                st.session_state.video_info = get_video_info(video_id)
+                st.session_state.sentiment = analyze_sentiment(comments)
+            else:
+                st.error(comments)
+    else:
+        st.error("⚠️ Please enter a YouTube Video ID.")
 
 # Display sentiment analysis if available
 if st.session_state.sentiment:
@@ -297,9 +363,9 @@ if st.session_state.sentiment:
 # Add an export feature
 if st.session_state.comments:
     st.markdown("## 📤 Export Data")
-    export_format = st.selectbox("Choose export format:", ["CSV", "JSON"], key="export_format")
+    export_format = st.selectbox("Choose export format:", ["CSV", "JSON"])
     
-    if st.button("Export Data", key="export_button"):
+    if st.button("Export Data"):
         if export_format == "CSV":
             csv = "Author,Text,Likes,Published At\n"
             for comment in st.session_state.comments:
@@ -308,8 +374,7 @@ if st.session_state.comments:
                 label="Download CSV",
                 data=csv,
                 file_name="youtube_comments.csv",
-                mime="text/csv",
-                key="download_csv"
+                mime="text/csv"
             )
         else:
             import json
@@ -318,8 +383,7 @@ if st.session_state.comments:
                 label="Download JSON",
                 data=json_str,
                 file_name="youtube_comments.json",
-                mime="application/json",
-                key="download_json"
+                mime="application/json"
             )
 
 st.markdown("---")
