@@ -96,7 +96,7 @@ st.markdown("""
         background-color: #f0f2f5;
     }
     .main {
-        max-width: 1000px;
+        max-width: 1200px;
         margin: 0 auto;
         background-color: white;
         padding: 2rem;
@@ -172,9 +172,11 @@ if st.button("Analyze Comments"):
                 
                 with col1:
                     st.markdown("<h2>Comments</h2>", unsafe_allow_html=True)
-                    st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
-                    for comment in comments:
-                        st.markdown(f"""
+                    comments_container = st.container()
+                    with comments_container:
+                        st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
+                        for comment in comments:
+                            st.markdown(f"""
 <div class="comment">
     <div class="comment-author">{comment['author']}</div>
     <div class="comment-date">{comment['published_at']}</div>
@@ -182,13 +184,15 @@ if st.button("Analyze Comments"):
     <div class="comment-likes">👍 {comment['likes']}</div>
 </div>
 """, unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                        st.markdown("</div>", unsafe_allow_html=True)
                 
                 with col2:
                     st.markdown("<h2>Extracted Questions</h2>", unsafe_allow_html=True)
-                    st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
-                    st.markdown(questions, unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    questions_container = st.container()
+                    with questions_container:
+                        st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
+                        st.markdown(questions, unsafe_allow_html=True)
+                        st.markdown("</div>", unsafe_allow_html=True)
             else:
                 st.error(comments)
     else:
