@@ -126,7 +126,7 @@ st.markdown("""
         border-radius: 8px;
         padding: 20px;
         background-color: #f9f9f9;
-        height: 100px;
+        height: 0px;
         overflow-y: auto;
     }
     .comment {
