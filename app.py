@@ -96,7 +96,7 @@ st.markdown("""
         background-color: #f0f2f5;
     }
     .main {
-        max-width: 800px;
+        max-width: 1200px;
         margin: 0 auto;
         background-color: white;
         padding: 2rem;
