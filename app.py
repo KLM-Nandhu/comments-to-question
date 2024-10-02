@@ -83,55 +83,76 @@ If there are no questions in a category, write 'None found.' under that category
 
     return response.choices[0].message.content
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="YouTube Comment Analyzer 🎥💬")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
     
     body {
-        color: #333;
-        font-family: 'Roboto', sans-serif;
-        line-height: 1.6;
+        font-family: 'Poppins', sans-serif;
         background-color: #f0f2f5;
+        color: #1a1a1a;
     }
     .main {
         max-width: 1200px;
         margin: 0 auto;
-        background-color: white;
+        background-color: #ffffff;
         padding: 2rem;
+        border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        border-radius: 8px;
+    }
+    h1 {
+        color: #3498db;
+        text-align: center;
+        font-size: 2.5em;
+        margin-bottom: 1em;
+    }
+    h2 {
+        color: #2c3e50;
+        font-size: 1.8em;
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+    }
+    .stTextInput>div>div>input {
+        background-color: #f1f3f5;
+        color: #333;
+        border: 2px solid #3498db;
+        border-radius: 5px;
+        padding: 10px 15px;
     }
     .stButton>button {
-        width: 100%;
-        background-color: #4CAF50;
+        background-color: #3498db;
         color: white;
         border: none;
-        padding: 12px 20px;
+        padding: 10px 20px;
         text-align: center;
         text-decoration: none;
         display: inline-block;
-        font-size: 18px;
+        font-size: 16px;
         margin: 4px 2px;
         cursor: pointer;
         border-radius: 5px;
         transition: background-color 0.3s;
     }
     .stButton>button:hover {
-        background-color: #45a049;
+        background-color: #2980b9;
+    }
+    .small-button {
+        padding: 5px 10px;
+        font-size: 14px;
     }
     # .scrollable-container {
     #     border: 1px solid #e0e0e0;
     #     border-radius: 8px;
     #     padding: 20px;
-    #     background-color: #f9f9f9;
-    #     height: 600px;
+    #     background-color: #ffffff;
+    #     height: 500px;
     #     overflow-y: auto;
     #     margin-bottom: 20px;
     # }
     .comment {
-        background-color: #ffffff;
+        background-color: #f9f9f9;
         border-left: 4px solid #3498db;
         padding: 15px;
         margin-bottom: 15px;
@@ -148,21 +169,26 @@ st.markdown("""
     }
     .comment-text {
         margin-top: 5px;
+        color: #34495e;
     }
     .comment-likes {
         font-size: 0.9em;
-        color: #3498db;
+        color: #e74c3c;
         margin-top: 5px;
     }
     .sort-button {
+        background-color: #2ecc71;
         margin-bottom: 10px;
+    }
+    .sort-button:hover {
+        background-color: #27ae60;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("YouTube Comments Analyzer")
+st.title("🎥 YouTube Comment Analyzer 💬")
 
-video_id = st.text_input("Enter YouTube Video ID")
+video_id = st.text_input("🔍 Enter YouTube Video ID")
 
 if 'comments' not in st.session_state:
     st.session_state.comments = []
@@ -191,48 +217,50 @@ def show_less_comments():
     if st.session_state.show_comments < 10:
         st.session_state.show_comments = 10
 
-if st.button("Analyze Comments"):
+if st.button("🚀 Analyze Comments"):
     if video_id:
-        with st.spinner("Fetching and analyzing comments..."):
+        with st.spinner("📊 Fetching and analyzing comments..."):
             comments = get_all_comments(video_id)
             if isinstance(comments, list):
                 st.session_state.comments = comments
                 sort_comments()
                 questions = extract_questions(comments)
                 
-                # Create two columns for split screen
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown("<h2>Comments</h2>", unsafe_allow_html=True)
-                    sort_button = st.button(f"Sort by: {st.session_state.sort_order.capitalize()}", on_click=toggle_sort_order, key="sort_button")
+                    st.markdown("<h2>📝 Comments</h2>", unsafe_allow_html=True)
+                    st.button(f"{'🔽' if st.session_state.sort_order == 'newest' else '🔼'} Sort: {st.session_state.sort_order.capitalize()}", 
+                              on_click=toggle_sort_order, key="sort_button", help="Toggle between newest and oldest comments")
                     
                     st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
                     for i, comment in enumerate(st.session_state.comments[:st.session_state.show_comments]):
                         st.markdown(f"""
                         <div class="comment">
-                            <div class="comment-author">{comment['author']}</div>
-                            <div class="comment-date">{comment['published_at'].strftime('%Y-%m-%d %H:%M:%S')}</div>
+                            <div class="comment-author">👤 {comment['author']}</div>
+                            <div class="comment-date">🕒 {comment['published_at'].strftime('%Y-%m-%d %H:%M:%S')}</div>
                             <div class="comment-text">{comment['text']}</div>
-                            <div class="comment-likes">👍 {comment['likes']}</div>
+                            <div class="comment-likes">❤️ {comment['likes']}</div>
                         </div>
                         """, unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
                     
-                    col1_1, col1_2 = st.columns(2)
+                    col1_1, col1_2, col1_3 = st.columns([1,1,2])
                     with col1_1:
                         if st.session_state.show_comments < len(st.session_state.comments):
-                            st.button("Show More", on_click=show_more_comments)
+                            st.button("📥 Show More", on_click=show_more_comments, key="show_more")
                     with col1_2:
                         if st.session_state.show_comments > 10:
-                            st.button("Show Less", on_click=show_less_comments)
+                            st.button("📤 Show Less", on_click=show_less_comments, key="show_less")
+                    with col1_3:
+                        st.write(f"Showing {st.session_state.show_comments} of {len(st.session_state.comments)} comments")
                 
                 with col2:
-                    st.markdown("<h2>Extracted Questions</h2>", unsafe_allow_html=True)
+                    st.markdown("<h2>❓ Extracted Questions</h2>", unsafe_allow_html=True)
                     st.markdown("<div class='scrollable-container'>", unsafe_allow_html=True)
                     st.markdown(questions, unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
             else:
                 st.error(comments)
     else:
-        st.error("Please enter a YouTube Video ID.")
+        st.error("⚠️ Please enter a YouTube Video ID.")
