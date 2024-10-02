@@ -137,7 +137,7 @@ st.markdown("""
         background-color: #f9f9f9;
         height: 0px;  /* Fixed height */
         overflow-y: auto;
-        margin-right: 30px;
+        margin-right: 100px;
     }
     .comment {
         background-color: #ffffff;
