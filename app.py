@@ -59,36 +59,36 @@ def extract_questions(comments):
     comments_with_authors = [f"{comment['author']}: {comment['text']}" for comment in comments]
     all_comments_text = "\n".join(comments_with_authors)
     
-    prompt = f"""Analyze the following YouTube comments and extract all questions about the video content. Improve and rephrase the questions to make them more efficient, clear, and insightful. Group similar questions together and provide a single, well-formulated version that captures the essence of those similar questions.
+    prompt = f"""Analyze the following YouTube comments and extract all direct and indirect questions about the video content. Improve and rephrase the questions to make them more efficient, clear, and insightful.
 
 Comments:
 {all_comments_text}
 
 Please follow these guidelines:
-1. Extract both explicit questions and implicit questions (statements that imply a question).
-2. Improve and rephrase each question to make it more clear, concise, and insightful.
-3. Group similar questions together and provide a single, well-formulated version that captures the essence of those similar questions.
-4. Provide context or additional information that might be helpful in understanding the question's relevance to the video content.
-5. Prioritize questions that are most relevant to the video content and likely to generate meaningful discussions.
+1. Categorize questions as either "Direct Questions" or "Indirect Questions".
+2. For each question, provide the commenter's name and the timestamp of the comment.
+3. Improve and rephrase each question to make it more clear, concise, and insightful.
+4. Do not add any additional context or explanations to the questions.
+5. Include all relevant questions without any limit on the number.
 
 Format your response as follows:
-1. [Improved Question 1]
-   Context: [Brief explanation of why this question is relevant or important]
-   Original comments: [List of original comment authors who asked similar questions]
-
-2. [Improved Question 2]
-   Context: [Brief explanation of why this question is relevant or important]
-   Original comments: [List of original comment authors who asked similar questions]
-
+Direct Questions:
+1. [Improved Direct Question 1] (Commenter: [Name], Time: [Timestamp])
+2. [Improved Direct Question 2] (Commenter: [Name], Time: [Timestamp])
 ...
 
-Ensure that you capture all unique and relevant questions from the comments, without any arbitrary limit on the number of questions.
+Indirect Questions:
+1. [Improved Indirect Question 1] (Commenter: [Name], Time: [Timestamp])
+2. [Improved Indirect Question 2] (Commenter: [Name], Time: [Timestamp])
+...
+
+If there are no questions in a category, write 'None found.' under that category.
 """
 
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are an AI assistant specialized in analyzing YouTube comments and extracting insightful questions. Your task is to identify, improve, and contextualize questions from user comments."},
+            {"role": "system", "content": "You are an AI assistant specialized in analyzing YouTube comments and extracting insightful questions. Your task is to identify, categorize, and improve questions from user comments."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=2000
