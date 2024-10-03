@@ -59,60 +59,39 @@ def extract_questions(comments):
     comments_with_authors = [f"{comment['author']}: {comment['text']}" for comment in comments]
     all_comments_text = "\n".join(comments_with_authors)
     
-    prompt = f"""Analyze the following YouTube comments and extract ALL direct and indirect questions about the video. Categorize them as either 'Direct' or 'Indirect'. Include the author of each question in parentheses.
+    prompt = f"""Analyze the following YouTube comments and extract all questions about the video content. Improve and rephrase the questions to make them more efficient, clear, and insightful. Group similar questions together and provide a single, well-formulated version that captures the essence of those similar questions.
 
 Comments:
 {all_comments_text}
 
+Please follow these guidelines:
+1. Extract both explicit questions and implicit questions (statements that imply a question).
+2. Improve and rephrase each question to make it more clear, concise, and insightful.
+3. Group similar questions together and provide a single, well-formulated version that captures the essence of those similar questions.
+4. Provide context or additional information that might be helpful in understanding the question's relevance to the video content.
+5. Prioritize questions that are most relevant to the video content and likely to generate meaningful discussions.
+
 Format your response as follows:
-Direct Questions:
-1. [Question 1] (Author1)
-2. [Question 2] (Author2)
+1. [Improved Question 1]
+   Context: [Brief explanation of why this question is relevant or important]
+   Original comments: [List of original comment authors who asked similar questions]
+
+2. [Improved Question 2]
+   Context: [Brief explanation of why this question is relevant or important]
+   Original comments: [List of original comment authors who asked similar questions]
+
 ...
 
-Indirect Questions:
-1. [Question 1] (Author1)
-2. [Question 2] (Author2)
-...
-
-If there are no questions in a category, write 'None found.' under that category.
+Ensure that you capture all unique and relevant questions from the comments, without any arbitrary limit on the number of questions.
 """
 
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that analyzes YouTube comments to extract questions."},
+            {"role": "system", "content": "You are an AI assistant specialized in analyzing YouTube comments and extracting insightful questions. Your task is to identify, improve, and contextualize questions from user comments."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=2000
-    )
-
-    return response.choices[0].message.content
-
-def suggest_follow_up_questions(video_info, comments, extracted_questions):
-    prompt = f"""Given the following information about a YouTube video and its comments, suggest 5 intelligent follow-up questions that users might ask to continue the conversation:
-
-Video Title: {video_info['title']}
-Video Views: {video_info['views']}
-Video Likes: {video_info['likes']}
-Number of Comments: {video_info['comments']}
-
-Extracted Questions:
-{extracted_questions}
-
-Sample Comments:
-{json.dumps(comments[:5], default=str)}
-
-Suggest 5 follow-up questions that would encourage further discussion about the video content, address common themes in the comments, or explore aspects of the video that might not have been covered in the existing questions.
-"""
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that suggests engaging follow-up questions based on YouTube video information and comments."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=500
     )
 
     return response.choices[0].message.content
@@ -164,7 +143,7 @@ def analyze_sentiment(comments):
         'neutral': neutral_count / total if total > 0 else 0
     }
 
-def create_docx_report(video_info, comments, questions, sentiment, follow_up_questions):
+def create_docx_report(video_info, comments, questions, sentiment):
     doc = Document()
     doc.add_heading('YouTube Video Analysis Report', 0)
 
@@ -182,13 +161,9 @@ def create_docx_report(video_info, comments, questions, sentiment, follow_up_que
     doc.add_paragraph(f"Neutral: {sentiment['neutral']:.2%}")
     doc.add_paragraph(f"Negative: {sentiment['negative']:.2%}")
 
-    # Extracted Questions
-    doc.add_heading('Extracted Questions', level=1)
+    # Extracted and Improved Questions
+    doc.add_heading('Extracted and Improved Questions', level=1)
     doc.add_paragraph(questions)
-
-    # Suggested Follow-up Questions
-    doc.add_heading('Suggested Follow-up Questions', level=1)
-    doc.add_paragraph(follow_up_questions)
 
     # Comments
     doc.add_heading('Comments', level=1)
@@ -211,11 +186,6 @@ def analyze_comments(video_id):
                 st.session_state.questions = extract_questions(comments)
                 st.session_state.video_info = get_video_info(video_id)
                 st.session_state.sentiment = analyze_sentiment(comments)
-                st.session_state.follow_up_questions = suggest_follow_up_questions(
-                    st.session_state.video_info,
-                    comments,
-                    st.session_state.questions
-                )
             else:
                 st.error(comments)
     else:
@@ -332,8 +302,6 @@ if 'video_info' not in st.session_state:
     st.session_state.video_info = None
 if 'sentiment' not in st.session_state:
     st.session_state.sentiment = None
-if 'follow_up_questions' not in st.session_state:
-    st.session_state.follow_up_questions = None
 
 def toggle_sort_order():
     st.session_state.sort_order = 'oldest' if st.session_state.sort_order == 'newest' else 'newest'
@@ -390,7 +358,6 @@ if st.session_state.comments:
                 "video_info": st.session_state.video_info,
                 "sentiment": st.session_state.sentiment,
                 "questions": st.session_state.questions,
-                "follow_up_questions": st.session_state.follow_up_questions,
                 "comments": st.session_state.comments
             }
             json_str = json.dumps(data, default=str)
@@ -405,8 +372,7 @@ if st.session_state.comments:
                 st.session_state.video_info,
                 st.session_state.comments,
                 st.session_state.questions,
-                st.session_state.sentiment,
-                st.session_state.follow_up_questions
+                st.session_state.sentiment
             )
             bio = BytesIO()
             doc.save(bio)
@@ -450,17 +416,11 @@ if st.session_state.comments:
             st.write(f"Showing {st.session_state.show_comments} of {len(st.session_state.comments)} comments")
     
     with col2:
-        st.markdown("<h2>❓ Extracted Questions</h2>", unsafe_allow_html=True)
+        st.markdown("<h2>❓ Extracted and Improved Questions</h2>", unsafe_allow_html=True)
         if st.session_state.questions:
             st.markdown(st.session_state.questions, unsafe_allow_html=True)
         else:
             st.info("🤔 No questions extracted yet. Try analyzing a video with more comments or discussions.")
-        
-        st.markdown("<h2>🔎 Suggested Follow-up Questions</h2>", unsafe_allow_html=True)
-        if st.session_state.follow_up_questions:
-            st.markdown(st.session_state.follow_up_questions, unsafe_allow_html=True)
-        else:
-            st.info("💡 Analyze a video to get suggested follow-up questions.")
 
 st.markdown("---")
 st.markdown("Developed with ❤️ using Streamlit")
