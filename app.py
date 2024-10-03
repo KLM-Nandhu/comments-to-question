@@ -84,7 +84,7 @@ If there are no questions in a category, write 'None found.' under that category
             {"role": "system", "content": "You are a helpful assistant that analyzes YouTube comments to extract questions."},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=2000  # Increased token limit to accommodate more questions
+        max_tokens=2000
     )
 
     return response.choices[0].message.content
@@ -131,7 +131,8 @@ def get_video_info(video_id):
                 'views': video['statistics']['viewCount'],
                 'likes': video['statistics']['likeCount'],
                 'comments': video['statistics']['commentCount'],
-                'published_at': video['snippet']['publishedAt']
+                'published_at': video['snippet']['publishedAt'],
+                'thumbnail': video['snippet']['thumbnails']['high']['url']
             }
         else:
             return None
@@ -349,12 +350,18 @@ if st.button("🚀 Analyze Comments", key="analyze_button"):
 
 # Display video information, sentiment analysis, and export data at the top
 if st.session_state.video_info:
-    st.markdown("## 📺 Video Information")
-    st.markdown(f"**Title:** {st.session_state.video_info['title']}")
-    st.markdown(f"**Views:** {st.session_state.video_info['views']}")
-    st.markdown(f"**Likes:** {st.session_state.video_info['likes']}")
-    st.markdown(f"**Comments:** {st.session_state.video_info['comments']}")
-    st.markdown(f"**Published:** {st.session_state.video_info['published_at']}")
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("## 📺 Video Information")
+        st.markdown(f"**Title:** {st.session_state.video_info['title']}")
+        st.markdown(f"**Views:** {st.session_state.video_info['views']}")
+        st.markdown(f"**Likes:** {st.session_state.video_info['likes']}")
+        st.markdown(f"**Comments:** {st.session_state.video_info['comments']}")
+        st.markdown(f"**Published:** {st.session_state.video_info['published_at']}")
+    
+    with col2:
+        st.image(st.session_state.video_info['thumbnail'], use_column_width=True)
 
 if st.session_state.sentiment:
     st.markdown("## 💭 Sentiment Analysis")
@@ -371,7 +378,7 @@ if st.session_state.comments:
         if export_format == "CSV":
             csv = "Author,Text,Likes,Published At\n"
             for comment in st.session_state.comments:
-                csv += f"{comment['author']},{comment['text']},{comment['likes']},{comment['published_at']}\n"
+                csv += f"{comment['author']},{comment['text'].replace(',', ' ')},{comment['likes']},{comment['published_at']}\n"
             st.download_button(
                 label="Download CSV",
                 data=csv,
