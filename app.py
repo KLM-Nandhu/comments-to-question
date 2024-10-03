@@ -56,7 +56,7 @@ def get_all_comments(video_id: str):
         return f"An error occurred while fetching comments: {str(e)}"
 
 def extract_questions(comments):
-    comments_with_authors = [f"{comment['author']}: {comment['text']}" for comment in comments]
+    comments_with_authors = [f"{comment['author']}: {comment['text']} (Date: {comment['published_at'].strftime('%Y-%m-%d %H:%M:%S')})" for comment in comments]
     all_comments_text = "\n".join(comments_with_authors)
     
     prompt = f"""Analyze the following YouTube comments and extract all direct and indirect questions about the video content. Improve and rephrase the questions to make them more efficient, clear, and insightful.
@@ -66,20 +66,20 @@ Comments:
 
 Please follow these guidelines:
 1. Categorize questions as either "Direct Questions" or "Indirect Questions".
-2. For each question, provide the commenter's name and the timestamp of the comment.
+2. For each question, provide the commenter's name and the date and time of the comment.
 3. Improve and rephrase each question to make it more clear, concise, and insightful.
 4. Do not add any additional context or explanations to the questions.
 5. Include all relevant questions without any limit on the number.
 
 Format your response as follows:
 Direct Questions:
-1. [Improved Direct Question 1] (Commenter: [Name], Time: [Timestamp])
-2. [Improved Direct Question 2] (Commenter: [Name], Time: [Timestamp])
+1. [Improved Direct Question 1] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
+2. [Improved Direct Question 2] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
 ...
 
 Indirect Questions:
-1. [Improved Indirect Question 1] (Commenter: [Name], Time: [Timestamp])
-2. [Improved Indirect Question 2] (Commenter: [Name], Time: [Timestamp])
+1. [Improved Indirect Question 1] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
+2. [Improved Indirect Question 2] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
 ...
 
 If there are no questions in a category, write 'None found.' under that category.
@@ -92,6 +92,32 @@ If there are no questions in a category, write 'None found.' under that category
             {"role": "user", "content": prompt}
         ],
         max_tokens=2000
+    )
+
+    return response.choices[0].message.content
+
+def generate_related_questions(questions):
+    prompt = f"""Based on the following extracted questions from YouTube comments, generate a list of 5-10 related questions that could further enhance the discussion about the video content. These related questions should explore themes or topics that are implied by the original questions but not directly asked.
+
+Extracted Questions:
+{questions}
+
+Please provide a list of related questions that:
+1. Expand on the themes present in the original questions
+2. Explore potential implications or consequences related to the topics discussed
+3. Encourage deeper analysis or critical thinking about the video content
+4. Address potential gaps in the discussion that the original questions might have missed
+
+Format your response as a numbered list of questions.
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are an AI assistant specialized in generating insightful and related questions based on existing questions from YouTube comments."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=1000
     )
 
     return response.choices[0].message.content
@@ -143,7 +169,7 @@ def analyze_sentiment(comments):
         'neutral': neutral_count / total if total > 0 else 0
     }
 
-def create_docx_report(video_info, comments, questions, sentiment):
+def create_docx_report(video_info, comments, questions, related_questions, sentiment):
     doc = Document()
     doc.add_heading('YouTube Video Analysis Report', 0)
 
@@ -165,6 +191,10 @@ def create_docx_report(video_info, comments, questions, sentiment):
     doc.add_heading('Extracted and Improved Questions', level=1)
     doc.add_paragraph(questions)
 
+    # Related Questions
+    doc.add_heading('Related Questions', level=1)
+    doc.add_paragraph(related_questions)
+
     # Comments
     doc.add_heading('Comments', level=1)
     for comment in comments:
@@ -184,6 +214,7 @@ def analyze_comments(video_id):
                 st.session_state.comments = comments
                 st.session_state.comments.sort(key=lambda x: x['published_at'], reverse=True)
                 st.session_state.questions = extract_questions(comments)
+                st.session_state.related_questions = generate_related_questions(st.session_state.questions)
                 st.session_state.video_info = get_video_info(video_id)
                 st.session_state.sentiment = analyze_sentiment(comments)
             else:
@@ -298,6 +329,8 @@ if 'show_comments' not in st.session_state:
     st.session_state.show_comments = 10
 if 'questions' not in st.session_state:
     st.session_state.questions = None
+if 'related_questions' not in st.session_state:
+    st.session_state.related_questions = None
 if 'video_info' not in st.session_state:
     st.session_state.video_info = None
 if 'sentiment' not in st.session_state:
@@ -358,6 +391,7 @@ if st.session_state.comments:
                 "video_info": st.session_state.video_info,
                 "sentiment": st.session_state.sentiment,
                 "questions": st.session_state.questions,
+                "related_questions": st.session_state.related_questions,
                 "comments": st.session_state.comments
             }
             json_str = json.dumps(data, default=str)
@@ -372,6 +406,7 @@ if st.session_state.comments:
                 st.session_state.video_info,
                 st.session_state.comments,
                 st.session_state.questions,
+                st.session_state.related_questions,
                 st.session_state.sentiment
             )
             bio = BytesIO()
@@ -421,6 +456,12 @@ if st.session_state.comments:
             st.markdown(st.session_state.questions, unsafe_allow_html=True)
         else:
             st.info("🤔 No questions extracted yet. Try analyzing a video with more comments or discussions.")
+        
+        st.markdown("<h2>🔍 Related Questions</h2>", unsafe_allow_html=True)
+        if st.session_state.related_questions:
+            st.markdown(st.session_state.related_questions, unsafe_allow_html=True)
+        else:
+            st.info("💡 No related questions generated yet. Try analyzing a video to get related questions.")
 
 st.markdown("---")
 st.markdown("Developed with ❤️ using Streamlit")
