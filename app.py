@@ -55,43 +55,48 @@ def get_all_comments(video_id: str):
     except Exception as e:
         return f"An error occurred while fetching comments: {str(e)}"
 
-def extract_questions(comments):
+def extract_questions(comments, video_info):
     comments_with_authors = [f"{comment['author']}: {comment['text']} (Date: {comment['published_at'].strftime('%Y-%m-%d %H:%M:%S')})" for comment in comments]
     all_comments_text = "\n".join(comments_with_authors)
     
-    prompt = f"""Analyze the following YouTube comments and extract all direct and indirect questions about the video content. Improve and rephrase the questions to make them more efficient, clear, and insightful.
+    prompt = f"""Analyze the following YouTube comments for the video titled "{video_info['title']}" and extract the 4 most relevant direct questions and 4 most relevant indirect questions about the video content. Improve and rephrase the questions to make them more efficient, clear, and insightful.
+
+Video Title: {video_info['title']}
+Video Description: {video_info['description']}
 
 Comments:
 {all_comments_text}
 
 Please follow these guidelines:
-1. Categorize questions as either "Direct Questions" or "Indirect Questions".
-2. For each question, provide the commenter's name and the date and time of the comment.
-3. Improve and rephrase each question to make it more clear, concise, and insightful.
-4. Do not add any additional context or explanations to the questions.
-5. Include all relevant questions without any limit on the number.
+1. Provide exactly 4 direct questions and 4 indirect questions.
+2. Ensure all questions are directly relevant to the video content.
+3. For each question, provide the commenter's name and the date and time of the comment.
+4. Improve and rephrase each question to make it more clear, concise, and insightful.
+5. Do not add any additional context or explanations to the questions.
 
 Format your response as follows:
 Direct Questions:
 1. [Improved Direct Question 1] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
 2. [Improved Direct Question 2] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
-...
+3. [Improved Direct Question 3] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
+4. [Improved Direct Question 4] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
 
 Indirect Questions:
 1. [Improved Indirect Question 1] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
 2. [Improved Indirect Question 2] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
-...
+3. [Improved Indirect Question 3] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
+4. [Improved Indirect Question 4] (Commenter: [Name], Date: [YYYY-MM-DD HH:MM:SS])
 
-If there are no questions in a category, write 'None found.' under that category.
+If there are not enough relevant questions in either category, write 'No more relevant questions found.' for the remaining slots.
 """
 
     response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
+        model="gpt-4o-mini",  # Using GPT-4 for better accuracy and relevance
         messages=[
-            {"role": "system", "content": "You are an AI assistant specialized in analyzing YouTube comments and extracting insightful questions. Your task is to identify, categorize, and improve questions from user comments."},
+            {"role": "system", "content": "You are an AI assistant specialized in analyzing YouTube comments and extracting insightful, relevant questions. Your task is to identify, categorize, improve, and limit the number of questions from user comments, ensuring they are directly related to the video content."},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=2000
+        max_tokens=1000
     )
 
     return response.choices[0].message.content
@@ -112,7 +117,7 @@ Format your response as a numbered list of questions.
 """
 
     response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
+        model="gpt-4",
         messages=[
             {"role": "system", "content": "You are an AI assistant specialized in generating insightful and related questions based on existing questions from YouTube comments."},
             {"role": "user", "content": prompt}
@@ -133,6 +138,7 @@ def get_video_info(video_id):
             video = response['items'][0]
             return {
                 'title': video['snippet']['title'],
+                'description': video['snippet']['description'],
                 'views': video['statistics']['viewCount'],
                 'likes': video['statistics']['likeCount'],
                 'comments': video['statistics']['commentCount'],
@@ -213,9 +219,9 @@ def analyze_comments(video_id):
             if isinstance(comments, list):
                 st.session_state.comments = comments
                 st.session_state.comments.sort(key=lambda x: x['published_at'], reverse=True)
-                st.session_state.questions = extract_questions(comments)
-                st.session_state.related_questions = generate_related_questions(st.session_state.questions)
                 st.session_state.video_info = get_video_info(video_id)
+                st.session_state.questions = extract_questions(comments, st.session_state.video_info)
+                st.session_state.related_questions = generate_related_questions(st.session_state.questions)
                 st.session_state.sentiment = analyze_sentiment(comments)
             else:
                 st.error(comments)
