@@ -117,7 +117,7 @@ Format your response as a numbered list of questions.
 """
 
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You are an AI assistant specialized in generating insightful and related questions based on existing questions from YouTube comments."},
             {"role": "user", "content": prompt}
